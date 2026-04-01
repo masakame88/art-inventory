@@ -328,7 +328,13 @@ const App = () => {
                   {/* Column 3: Stock */}
                   <div className="col-span-1 flex flex-col items-center justify-center md:border-l border-zinc-100">
                     <span className="md:hidden text-[10px] font-black text-zinc-400 mb-1 uppercase tracking-widest">Stock</span>
-                    <div className={`text-2xl font-black leading-none tabular-nums ${remaining <= 0 ? 'text-red-500' : remaining <= 2 ? 'text-orange-500' : 'text-zinc-900'}`}>
+                    <div className={`text-2xl font-black leading-none tabular-nums px-3 py-1.5 rounded-md border ${
+                      remaining <= 0 
+                        ? 'text-red-600 bg-red-50 border-red-200 shadow-sm' 
+                        : remaining <= 2 
+                          ? 'text-orange-600 bg-orange-50 border-orange-200 shadow-sm' 
+                          : 'text-zinc-900 border-transparent'
+                    }`}>
                       {remaining}
                     </div>
                   </div>
