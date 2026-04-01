@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, History, Package, ShoppingCart, Calendar, Trash2, Upload, Download, AlertCircle, ChevronRight, ArrowDown } from 'lucide-react';
+import { Plus, Minus, History, Package, ShoppingCart, Calendar, Trash2, Upload, Download, AlertCircle, ChevronRight, ArrowDown, RefreshCw } from 'lucide-react';
 
 const App = () => {
   const [items, setItems] = useState([]);
@@ -27,14 +27,11 @@ const App = () => {
   const handleCSVExport = () => {
     if (items.length === 0) return;
 
-    // BOM for Excel (UTF-8)
     let csvContent = "\ufeff";
     csvContent += "入庫日,品名,数量,使用日,数量,購入店,残り\n";
 
     items.forEach(item => {
       const logs = item.logs;
-      // Calculate remaining per log for the export display if needed, 
-      // but here we just follow the structure.
       let currentStock = 0;
 
       logs.forEach((log, idx) => {
@@ -52,7 +49,6 @@ const App = () => {
         ];
         csvContent += row.join(",") + "\n";
       });
-      // Add an empty line between items for readability, matching user's CSV
       csvContent += ",,,,,,\n";
     });
 
@@ -66,7 +62,7 @@ const App = () => {
     document.body.removeChild(link);
   };
 
-  // CSV Parsing Logic - Now with Overwrite Capability
+  // Improved CSV Parsing Logic - Sync and Clean
   const handleCSVUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -96,10 +92,12 @@ const App = () => {
           return dateStr.replace(/\./g, '/');
         };
 
-        if (name && name !== "") {
+        const trimmedName = name ? name.trim() : "";
+
+        if (trimmedName !== "") {
           currentItem = {
             id: Math.random().toString(36).substr(2, 9),
-            name: name,
+            name: trimmedName,
             store: store || '',
             logs: []
           };
@@ -109,7 +107,7 @@ const App = () => {
           if (useDate && useQty && !isNaN(useQty) && useQty !== "") {
             currentItem.logs.push({ type: 'out', date: formatDate(useDate), qty: Number(useQty), note: 'インポート' });
           }
-          newItemsMap.set(name, currentItem);
+          newItemsMap.set(trimmedName, currentItem);
         } else if (currentItem) {
           if (inQty && !isNaN(inQty) && inQty !== "") {
             currentItem.logs.push({ type: 'in', date: formatDate(inDate), qty: Number(inQty), note: '追加読込' });
@@ -122,23 +120,26 @@ const App = () => {
 
       if (newItemsMap.size > 0) {
         setItems(prev => {
-          const updated = [...prev];
-          newItemsMap.forEach((newItem, name) => {
-            const index = updated.findIndex(existing => existing.name === name);
-            if (index !== -1) {
-              // Overwrite with new data from CSV
-              updated[index] = { ...newItem, id: updated[index].id }; 
-            } else {
-              // Add as new
-              updated.push(newItem);
-            }
-          });
-          return updated;
+          // 1. CSVに含まれる品名を特定
+          const csvNames = Array.from(newItemsMap.keys());
+          
+          // 2. 既存データから、CSVにある名前のものを「すべて」取り除く（過去の重複対策）
+          const filteredItems = prev.filter(item => !csvNames.includes(item.name.trim()));
+          
+          // 3. フィルタリング後のデータに、CSVの新しいデータを合流させる
+          return [...filteredItems, ...Array.from(newItemsMap.values())];
         });
       }
     };
     reader.readAsText(file);
     e.target.value = null;
+  };
+
+  const handleClearAll = () => {
+    if (confirm('ブラウザに保存されているすべての画材データを削除しますか？\nCSVインポート前に一旦きれいにしたい場合に実行してください。')) {
+      setItems([]);
+      localStorage.removeItem('art_inventory_v3');
+    }
   };
 
   const getItemStats = (item) => {
@@ -150,13 +151,27 @@ const App = () => {
 
   const handleAddItem = (e) => {
     e.preventDefault();
-    const item = {
-      id: Date.now().toString(),
-      name: newItem.name,
-      store: newItem.store,
-      logs: [{ type: 'in', date: newItem.date.replace(/-/g, '/'), qty: Number(newItem.qty), note: '新規登録' }]
-    };
-    setItems([...items, item]);
+    const trimmedName = newItem.name.trim();
+    
+    // 手動追加時も、同名があれば統合するか確認
+    const existingIndex = items.findIndex(i => i.name === trimmedName);
+    if (existingIndex !== -1) {
+      if (!confirm('同名の画材が既に存在します。新しい入庫記録として既存の項目に追加しますか？')) return;
+      
+      setItems(items.map(i => i.name === trimmedName ? {
+        ...i,
+        logs: [...i.logs, { type: 'in', date: newItem.date.replace(/-/g, '/'), qty: Number(newItem.qty), note: '手動追加' }]
+      } : i));
+    } else {
+      const item = {
+        id: Date.now().toString(),
+        name: trimmedName,
+        store: newItem.store,
+        logs: [{ type: 'in', date: newItem.date.replace(/-/g, '/'), qty: Number(newItem.qty), note: '新規登録' }]
+      };
+      setItems([...items, item]);
+    }
+    
     setShowAddModal(false);
     setNewItem({ name: '', store: '', date: new Date().toISOString().split('T')[0], qty: 1 });
   };
@@ -181,7 +196,7 @@ const App = () => {
           <p className="text-zinc-500 mt-2 font-medium text-sm">画材という「物語の種」を、丹念に管理する</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input type="file" ref={fileInputRef} onChange={handleCSVUpload} accept=".csv" className="hidden" />
           <button 
             onClick={() => fileInputRef.current.click()}
@@ -208,7 +223,6 @@ const App = () => {
       </header>
 
       <main className="max-w-6xl mx-auto">
-        {/* Table Header */}
         <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-zinc-100 text-[10px] font-black tracking-widest text-zinc-500 uppercase rounded-t-lg border-x border-t border-zinc-200">
           <div className="col-span-4">Material / Store</div>
           <div className="col-span-5 pl-4 border-l border-zinc-200">History (Full Log)</div>
@@ -223,12 +237,12 @@ const App = () => {
               <p className="font-medium text-lg text-zinc-300">No materials recorded.</p>
             </div>
           ) : (
-            items.map((item, itemIdx) => {
+            // Sort by name to keep duplicates together for easier finding if they persist
+            [...items].sort((a,b) => a.name.localeCompare(b.name)).map((item, itemIdx) => {
               const { remaining } = getItemStats(item);
               return (
                 <div key={item.id} className={`grid grid-cols-1 md:grid-cols-12 gap-4 p-6 md:px-8 md:py-4 border-b border-zinc-100 hover:bg-zinc-50 transition-colors ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/20'}`}>
                   
-                  {/* Column 1: Name & Store */}
                   <div className="col-span-4 flex flex-col justify-center">
                     <h3 className="font-bold text-lg text-zinc-900 leading-tight mb-1">{item.name}</h3>
                     <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
@@ -237,7 +251,6 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Column 2: History (Vertical List) */}
                   <div className="col-span-5 md:pl-4 md:border-l border-zinc-100 py-1">
                     <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
                       {item.logs.length === 0 ? (
@@ -261,7 +274,6 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Column 3: Stock */}
                   <div className="col-span-1 flex flex-col items-center justify-center md:border-l border-zinc-100">
                     <span className="md:hidden text-[10px] font-black text-zinc-400 mb-1 uppercase tracking-widest">Stock</span>
                     <div className={`text-2xl font-black leading-none tabular-nums ${remaining <= 0 ? 'text-red-500' : remaining <= 2 ? 'text-orange-500' : 'text-zinc-900'}`}>
@@ -269,7 +281,6 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Column 4: Actions */}
                   <div className="col-span-2 flex justify-end gap-1 md:border-l border-zinc-100 md:pl-4">
                     <button 
                       onClick={() => setShowUsageModal(item.id)}
@@ -312,13 +323,19 @@ const App = () => {
         </div>
       </main>
 
-      {/* Footer Info */}
-      <footer className="max-w-6xl mx-auto mt-12 pb-12 flex justify-between items-center text-[10px] font-black tracking-widest text-zinc-400 uppercase">
-        <div>Art Archive v3.3 Sync</div>
+      <footer className="max-w-6xl mx-auto mt-12 pb-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black tracking-widest text-zinc-400 uppercase">
         <div className="flex gap-6">
+          <span>Art Archive v3.4 CleanSync</span>
           <span>Items: {items.length}</span>
           <span>Alert: {items.filter(i => getItemStats(i).remaining <= 2).length}</span>
         </div>
+        <button 
+          onClick={handleClearAll}
+          className="flex items-center gap-2 px-3 py-1 text-zinc-300 hover:text-red-400 border border-transparent hover:border-red-100 rounded transition-all"
+        >
+          <RefreshCw size={12} />
+          全データ削除 (リセット)
+        </button>
       </footer>
 
       {/* Modals */}
