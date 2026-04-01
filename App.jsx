@@ -330,7 +330,7 @@ const App = () => {
                     <span className="md:hidden text-[10px] font-black text-zinc-400 mb-1 uppercase tracking-widest">Stock</span>
                     <div className={`text-2xl font-black leading-none tabular-nums px-3 py-1.5 rounded-md border ${
                       remaining <= 0 
-                        ? 'text-red-600 bg-red-50 border-red-200 shadow-sm' 
+                        ? 'text-blue-600 bg-blue-50 border-blue-200 shadow-sm' 
                         : remaining <= 2 
                           ? 'text-orange-600 bg-orange-50 border-orange-200 shadow-sm' 
                           : 'text-zinc-900 border-transparent'
