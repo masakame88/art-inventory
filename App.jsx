@@ -23,7 +23,50 @@ const App = () => {
     localStorage.setItem('art_inventory_v3', JSON.stringify(items));
   }, [items]);
 
-  // CSV Parsing Logic
+  // CSV Export Logic
+  const handleCSVExport = () => {
+    if (items.length === 0) return;
+
+    // BOM for Excel (UTF-8)
+    let csvContent = "\ufeff";
+    csvContent += "入庫日,品名,数量,使用日,数量,購入店,残り\n";
+
+    items.forEach(item => {
+      const logs = item.logs;
+      // Calculate remaining per log for the export display if needed, 
+      // but here we just follow the structure.
+      let currentStock = 0;
+
+      logs.forEach((log, idx) => {
+        if (log.type === 'in') currentStock += log.qty;
+        else currentStock -= log.qty;
+
+        const row = [
+          log.type === 'in' ? log.date : '',
+          idx === 0 ? `"${item.name}"` : '',
+          log.type === 'in' ? log.qty : '',
+          log.type === 'out' ? log.date : '',
+          log.type === 'out' ? log.qty : '',
+          idx === 0 ? `"${item.store}"` : '',
+          currentStock
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+      // Add an empty line between items for readability, matching user's CSV
+      csvContent += ",,,,,,\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "画材リスト_更新済.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // CSV Parsing Logic - Now with Overwrite Capability
   const handleCSVUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -32,7 +75,7 @@ const App = () => {
     reader.onload = (event) => {
       const text = event.target.result;
       const lines = text.split(/\r?\n/);
-      const newItems = [];
+      const newItemsMap = new Map();
       let currentItem = null;
 
       let headerFound = false;
@@ -40,7 +83,7 @@ const App = () => {
       lines.forEach((line) => {
         const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
         
-        if (cols.includes('品名') && cols.includes('入庫日')) {
+        if (cols.includes('品名') && (cols.includes('入庫日') || cols.includes('入庫'))) {
           headerFound = true;
           return;
         }
@@ -60,25 +103,38 @@ const App = () => {
             store: store || '',
             logs: []
           };
-          if (inQty && !isNaN(inQty)) {
+          if (inQty && !isNaN(inQty) && inQty !== "") {
             currentItem.logs.push({ type: 'in', date: formatDate(inDate), qty: Number(inQty), note: 'インポート' });
           }
-          if (useDate && useQty && !isNaN(useQty)) {
+          if (useDate && useQty && !isNaN(useQty) && useQty !== "") {
             currentItem.logs.push({ type: 'out', date: formatDate(useDate), qty: Number(useQty), note: 'インポート' });
           }
-          newItems.push(currentItem);
+          newItemsMap.set(name, currentItem);
         } else if (currentItem) {
-          if (inQty && !isNaN(inQty)) {
+          if (inQty && !isNaN(inQty) && inQty !== "") {
             currentItem.logs.push({ type: 'in', date: formatDate(inDate), qty: Number(inQty), note: '追加読込' });
           }
-          if (useDate && useQty && !isNaN(useQty)) {
+          if (useDate && useQty && !isNaN(useQty) && useQty !== "") {
             currentItem.logs.push({ type: 'out', date: formatDate(useDate), qty: Number(useQty), note: '追加読込' });
           }
         }
       });
 
-      if (newItems.length > 0) {
-        setItems(prev => [...prev, ...newItems]);
+      if (newItemsMap.size > 0) {
+        setItems(prev => {
+          const updated = [...prev];
+          newItemsMap.forEach((newItem, name) => {
+            const index = updated.findIndex(existing => existing.name === name);
+            if (index !== -1) {
+              // Overwrite with new data from CSV
+              updated[index] = { ...newItem, id: updated[index].id }; 
+            } else {
+              // Add as new
+              updated.push(newItem);
+            }
+          });
+          return updated;
+        });
       }
     };
     reader.readAsText(file);
@@ -133,6 +189,13 @@ const App = () => {
           >
             <Upload size={14} />
             CSV Import
+          </button>
+          <button 
+            onClick={handleCSVExport}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-md hover:bg-zinc-50 transition-colors text-xs font-bold uppercase tracking-widest text-zinc-600 shadow-sm"
+          >
+            <Download size={14} />
+            CSV Export
           </button>
           <button 
             onClick={() => setShowAddModal(true)}
@@ -251,7 +314,7 @@ const App = () => {
 
       {/* Footer Info */}
       <footer className="max-w-6xl mx-auto mt-12 pb-12 flex justify-between items-center text-[10px] font-black tracking-widest text-zinc-400 uppercase">
-        <div>Art Archive v3.2 Colored</div>
+        <div>Art Archive v3.3 Sync</div>
         <div className="flex gap-6">
           <span>Items: {items.length}</span>
           <span>Alert: {items.filter(i => getItemStats(i).remaining <= 2).length}</span>
