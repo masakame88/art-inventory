@@ -120,13 +120,13 @@ const App = () => {
 
       if (newItemsMap.size > 0) {
         setItems(prev => {
-          // 1. CSVに含まれる品名を特定
+          // CSVに含まれる品名を特定
           const csvNames = Array.from(newItemsMap.keys());
           
-          // 2. 既存データから、CSVにある名前のものを「すべて」取り除く（過去の重複対策）
+          // 既存データから、CSVにある名前のものを「すべて」取り除く（過去の重複対策）
           const filteredItems = prev.filter(item => !csvNames.includes(item.name.trim()));
           
-          // 3. フィルタリング後のデータに、CSVの新しいデータを合流させる
+          // フィルタリング後のデータに、CSVの新しいデータを合流させる
           return [...filteredItems, ...Array.from(newItemsMap.values())];
         });
       }
@@ -237,8 +237,7 @@ const App = () => {
               <p className="font-medium text-lg text-zinc-300">No materials recorded.</p>
             </div>
           ) : (
-            // Sort by name to keep duplicates together for easier finding if they persist
-            [...items].sort((a,b) => a.name.localeCompare(b.name)).map((item, itemIdx) => {
+            items.map((item, itemIdx) => {
               const { remaining } = getItemStats(item);
               return (
                 <div key={item.id} className={`grid grid-cols-1 md:grid-cols-12 gap-4 p-6 md:px-8 md:py-4 border-b border-zinc-100 hover:bg-zinc-50 transition-colors ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/20'}`}>
@@ -325,7 +324,7 @@ const App = () => {
 
       <footer className="max-w-6xl mx-auto mt-12 pb-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black tracking-widest text-zinc-400 uppercase">
         <div className="flex gap-6">
-          <span>Art Archive v3.4 CleanSync</span>
+          <span>Art Archive v3.5 NaturalOrder</span>
           <span>Items: {items.length}</span>
           <span>Alert: {items.filter(i => getItemStats(i).remaining <= 2).length}</span>
         </div>
