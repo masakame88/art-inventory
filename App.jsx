@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, 
   Minus, 
@@ -12,11 +12,12 @@ import {
   X,
   Clock,
   ChevronRight,
-  Palette
+  Palette,
+  Upload
 } from 'lucide-react';
 
 /**
- * Atelier Inventory - 完全版
+ * Atelier Inventory - 完全版 (CSV連携機能付き)
  * 衣服の細密描写に没頭する時間を支え、画材との対話を記録します。
  */
 const App = () => {
@@ -24,9 +25,7 @@ const App = () => {
   // 1. 状態管理（データの保存と読み込み）
   // ----------------------------------------------------------------
   const [items, setItems] = useState(() => {
-    // ローカルストレージからデータを読み込む
     const saved = localStorage.getItem('art-inventory-v3');
-    // 初回起動時のサンプルデータ
     const defaultData = [
       { 
         id: '1', 
@@ -39,16 +38,6 @@ const App = () => {
           { type: 'out', date: '2026-02-17', qty: 1, note: '衣服の襟元の描写に使用' },
           { type: 'out', date: '2026-03-01', qty: 1, note: 'ボタンの光沢の加筆に使用' }
         ] 
-      },
-      { 
-        id: '2', 
-        name: 'チタニウムホワイト (油彩)', 
-        store: '画材店', 
-        initialQty: 3, 
-        unit: '本', 
-        logs: [
-          { type: 'in', date: '2026-01-05', qty: 3, note: '新規購入' }
-        ] 
       }
     ];
     return saved ? JSON.parse(saved) : defaultData;
@@ -60,14 +49,14 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [notification, setNotification] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // データの変化を検知して自動保存
   useEffect(() => {
     localStorage.setItem('art-inventory-v3', JSON.stringify(items));
   }, [items]);
 
   // ----------------------------------------------------------------
-  // 2. ロジック（在庫計算・フィルタリング）
+  // 2. ロジック（在庫計算・フィルタリング・CSV処理）
   // ----------------------------------------------------------------
   const calculateStock = (item) => {
     const inTotal = item.logs.filter(l => l.type === 'in').reduce((sum, l) => sum + l.qty, 0);
@@ -89,8 +78,53 @@ const App = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleCsvUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        if (lines.length <= 1) throw new Error('データが見つかりません');
+
+        const newItems = [...items];
+        let count = 0;
+
+        // CSV形式想定: 品名, 購入店, 数量, 単位, 日付, メモ
+        lines.slice(1).forEach((line) => {
+          const [name, store, qty, unit, date, note] = line.split(',').map(s => s?.trim());
+          if (name && qty && !isNaN(qty)) {
+            newItems.push({
+              id: `${Date.now()}-${Math.random()}`,
+              name,
+              store: store || '',
+              initialQty: Number(qty),
+              unit: unit || '個',
+              logs: [{
+                type: 'in',
+                date: date || new Date().toISOString().split('T')[0],
+                qty: Number(qty),
+                note: note || 'CSVインポート'
+              }]
+            });
+            count++;
+          }
+        });
+
+        setItems(newItems);
+        showToast(`${count}件の画材を一括登録しました`);
+      } catch (err) {
+        showToast('CSVの読み込みに失敗しました');
+      }
+      e.target.value = ''; // ファイル選択をリセット
+    };
+    reader.readAsText(file);
+  };
+
   // ----------------------------------------------------------------
-  // 3. アクション（追加・記録・削除）
+  // 3. アクション
   // ----------------------------------------------------------------
   const addItem = (e) => {
     e.preventDefault();
@@ -147,12 +181,21 @@ const App = () => {
   // ----------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#fcfdfd] text-[#1e293b] font-sans p-4 md:p-10 pb-24 selection:bg-indigo-100">
-      {/* 通知ポップアップ */}
+      {/* 通知 */}
       {notification && (
         <div className="fixed top-6 right-6 z-50 bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right duration-300 font-bold border-b-4 border-indigo-800">
           {notification}
         </div>
       )}
+
+      {/* 隠しファイル入力 */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleCsvUpload} 
+        accept=".csv" 
+        className="hidden" 
+      />
 
       <div className="max-w-5xl mx-auto">
         {/* ヘッダー */}
@@ -168,13 +211,22 @@ const App = () => {
               衣服が帯びる生命の主張と対話し、その細密な描写を支える画材たちの記録。
             </p>
           </div>
-          <button 
-            onClick={() => setShowAddModal(true)} 
-            className="group relative flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-1 transition-all active:translate-y-0"
-          >
-            <Plus className="w-5 h-5" />
-            画材を登録する
-          </button>
+          <div className="flex gap-3 w-full md:w-auto">
+            <button 
+              onClick={() => fileInputRef.current.click()}
+              className="flex-1 md:flex-none px-6 py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+            >
+              <Upload className="w-5 h-5" />
+              CSV登録
+            </button>
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              className="flex-1 md:flex-none px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-1 transition-all active:translate-y-0 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              画材を登録
+            </button>
+          </div>
         </header>
 
         {/* 検索・フィルターバー */}
@@ -314,13 +366,6 @@ const App = () => {
                     </React.Fragment>
                   );
                 })}
-                {filteredItems.length === 0 && (
-                  <tr>
-                    <td colSpan="3" className="px-10 py-20 text-center text-slate-400 italic font-medium">
-                      該当する画材が見つかりませんでした
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
