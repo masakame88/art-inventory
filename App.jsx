@@ -335,7 +335,10 @@ const App = () => {
                               </div>
                               
                               <div className="relative border-l-2 border-slate-100 ml-6 space-y-12 pb-4">
-                                {item.logs.slice().reverse().map((log, idx) => (
+                                {/* 履歴を日付順（降順）にソートして表示 */}
+                                {[...item.logs]
+                                  .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                  .map((log, idx) => (
                                   <div key={idx} className="relative pl-12 animate-in fade-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                                     {/* ドット */}
                                     <div className={`absolute -left-[13px] top-1.5 w-6 h-6 rounded-full border-4 border-white shadow-md ${log.type === 'in' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
