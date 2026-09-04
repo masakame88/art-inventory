@@ -1,507 +1,515 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Package, ShoppingCart, Trash2, Upload, Download, RefreshCw, Pencil, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  ChevronRight,
+  Download,
+  FileText,
+  History,
+  LoaderCircle,
+  PackagePlus,
+  Palette,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Upload,
+  X,
+} from 'lucide-react';
 
-const App = () => {
-  const [items, setItems] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showUsageModal, setShowUsageModal] = useState(null); // stores itemId
-  
-  // New State for Editing
-  const [editingItem, setEditingItem] = useState(null); // { id, name, store }
-  const [editingLog, setEditingLog] = useState(null);   // { itemId, logIndex, type, date, qty }
+const INITIAL_CSV = "入庫日,品名,数量,使用日,数量,購入店,残り\n2026/1/17,\"額材料　えぞ松\",5,,,\"エンチョー\",5\n,,,2026/1/17,5,,0\n,,,,,,\n2026/1/17,\"ヒノキ\",8,,,\"17\",8\n,,,2026/01/17,8,,0\n,,,,,,\n2026/1/17,\"ラワン\",1,,,\"カインズ\",1\n,,,2026/1/17,1,,0\n,,,,,,\n2026/1/17,\"手袋\",1,,,\"カインズ\",1\n,,,2026/1/17,1,,0\n,,,,,,\n2026/1/12,\"木製パネル　F4\",6,,,\"世界堂\",6\n,,,2026/1/20,6,,0\n,,,,,,\n2026/2/20,\"筆インターロン2/0号\",10,,,\"世界堂\",10\n,,,2026/3/1,1,,9\n,,,2026/08/05,9,,0\n2026/08/21,,20,,,,20\n,,,2026/08/05,1,,19\n,,,,,,\n2026/1/12,\"絵具チタニウムホワイト\",2,,,\"世界堂\",2\n,,,2026/3/18,1,,1\n,,,,,,\n2026/1/28,\"木製パネル　A5\",3,,,\"世界堂\",3\n,,,2026/3/0,3,,0\n,,,,,,\n2026/07/09,\"木枠　M10\",1,,,\"世界堂\",1\n,,,,,,\n2026/2/9,\"マスキング液\",5,,,\"アマゾン\",5\n,,,2026/2/11,1,,4\n,,,2026/2/15,1,,3\n,,,,,,\n2026/2/11,\"斎藤様ポスター\",11,,,\"ラクスル\",11\n,,,2026/2/13,11,,0\n,,,,,,\n2026/2/12,\"斎藤様額縁\",11,,,\"マルニ画材\",11\n,,,2026/2/13,11,,0\n,,,,,,\n2026/2/20,\"木製パネル M20\",2,,,\"世界堂\",2\n,,,,,,\n2026/2/26,\"木製パネルM15\",5,,,\"世界堂\",5\n,,,2026/03/03,5,,0\n,,,,,,\n2026/3/7,\"額材料（ねじ、紙やすり等）\",1,,,\"エンチョー\",1\n,,,2026/3/7,1,,0\n,,,,,,\n2026/3/7,\"桧\",10,,,\"エンチョー\",10\n,,,2026/3/7,10,,0\n,,,,,,\n2026/3/7,\"エゾ松\",10,,,\"エンチョー\",10\n,,,2026/3/7,10,,0\n,,,,,,\n2026/3/15,\"パーマネントイエローオレンジ\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/3/15,\"コバルトブルー\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/3/15,\"ウルトラマリン\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/3/15,\"コバルトバイオレット\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/3/15,\"アイボリブラック\",2,,,\"マルニ画材\",2\n,,,,,,\n2026/3/15,\"額（SDP ANI作品用)\",1,,,\"マルニ画材\",1\n,,,2026/3/23,1,,0\n,,,,,,\n2026/3/15,\"マット\",1,,,\"マルニ画材\",1\n,,,2026/3/23,1,,0\n,,,,,,\n2026/3/15,\"かぶせ箱(小川様用)\",1,,,\"マルニ画材\",1\n,,,2026/2/23,1,,0\n,,,,,,\n2026/04/06,\"額用ヒノキ\",10,,,\"カインズ\",10\n,,,2026/04/07,10,,0\n2026/04/05,,8,,,,8\n,,,2026/04/07,8,,0\n2026/04/17,,20,,,,20\n,,,2026/05/02,2,,18\n,,,,,,\n2026/04/05,\"額用エゾ松\",10,,,\"エンチョー\",10\n,,,2026/04/07,10,,0\n2026/04/17,,20,,,,20\n,,,2026/05/02,2,,18\n,,,,,,\n2026/04/05,\"額用ネジ\",6,,,\"カインズ\",6\n,,,2026/04/07,6,,0\n,,,,,,\n2026/04/05,\"耐水ペーパー\",1,,,\"カインズ\",1\n,,,,,,\n2026/04/20,\"水性塗料　オーク\",1,,,\"カインズ\",1\n,,,2026/04/20,1,,0\n,,,,,,\n2026/05/01,\"かぶせ箱\",47,,,\"マルニ画材\",47\n,,,2026/05/06,28,,19\n,,,2026/05/13,2,,17\n2026/05/15,,1,,,,18\n,,,2026/05/15,1,,17\n2026/05/19,,9,,,,26\n,,,2026/05/19,2,,24\n,,,,,,\n2026/04/26,\"板ダンボール180\",15,,,\"楽天\",15\n,,,2026/05/06,8,,7\n,,,2026/05/15,2,,5\n,,,,,,\n2026/05/15,\"ブラシクリーナー\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/05/15,\"ターコイズブルー\",1,,,\"マルニ画材\",1\n2026/07/09,,1,,,,2\n,,,,,,\n2026/05/15,\"ブルーコンポーゼ\",1,,,\"マルニ画材\",1\n,,,,,,\n2026/07/09,\"木枠　F10\",5,,,\"世界堂\",5\n,,,,,,\n2026/07/09,\"シナバーグリーン　110ml\",1,,,\"世界堂\",1\n,,,,,,\n2026/07/09,\"ブルーコンポーゼ　110ml\",1,,,\"世界堂\",1\n,,,,,,\n";
 
-  const fileInputRef = useRef(null);
+const STORAGE_KEY = 'art_inventory_v5';
+const CATEGORIES = ['すべて', '絵具', '支持体・紙', '筆・道具', 'メディウム', 'その他'];
+const ITEM_CATEGORIES = CATEGORIES.slice(1);
 
-  const [newItem, setNewItem] = useState({ name: '', store: '', date: new Date().toISOString().split('T')[0], qty: 1 });
-  const [usage, setUsage] = useState({ date: new Date().toISOString().split('T')[0], qty: 1 });
+const CATEGORY_STYLES = {
+  絵具: { dot: 'bg-blue-600', badge: 'bg-blue-50 text-blue-700' },
+  '支持体・紙': { dot: 'bg-amber-700', badge: 'bg-amber-50 text-amber-800' },
+  '筆・道具': { dot: 'bg-emerald-700', badge: 'bg-emerald-50 text-emerald-800' },
+  メディウム: { dot: 'bg-violet-600', badge: 'bg-violet-50 text-violet-800' },
+  その他: { dot: 'bg-stone-500', badge: 'bg-stone-100 text-stone-700' },
+};
 
-  // Load from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem('art_inventory_v3');
-    if (saved) {
-      setItems(JSON.parse(saved));
+const newId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const today = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDate = (value) => {
+  if (!value) return '';
+  const parts = value.trim().replaceAll('.', '/').replaceAll('-', '/').split('/');
+  if (parts.length !== 3) return value;
+  return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+};
+
+const categoryFor = (name) => {
+  if (/絵具|ホワイト|イエロー|ブルー|バイオレット|ブラック|グリーン|ウルトラマリン|水性塗料/.test(name)) return '絵具';
+  if (/木製パネル|木枠|ポスター/.test(name)) return '支持体・紙';
+  if (/筆|インターロン|手袋/.test(name)) return '筆・道具';
+  if (/マスキング液|ブラシクリーナー/.test(name)) return 'メディウム';
+  return 'その他';
+};
+
+const parseCsvRows = (text) => {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (quoted && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === ',' && !quoted) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
     }
+  }
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+};
+
+const inventoryFromCsv = (text) => {
+  const rows = parseCsvRows(text.replace(/^\uFEFF/, ''));
+  const items = [];
+  let current = null;
+  let headerFound = false;
+
+  for (const sourceRow of rows) {
+    const columns = [...sourceRow, '', '', '', '', '', '', ''].slice(0, 7).map((cell) => cell.trim());
+    if (columns.includes('品名') && columns.includes('入庫日')) {
+      headerFound = true;
+      continue;
+    }
+    if (!headerFound) continue;
+    if (!columns.some(Boolean)) {
+      current = null;
+      continue;
+    }
+
+    const [inDate, name, inQty, useDate, useQty, store] = columns;
+    if (name) {
+      current = {
+        id: newId(),
+        name,
+        category: categoryFor(name),
+        store,
+        logs: [],
+      };
+      items.push(current);
+    }
+    if (!current) continue;
+    if (inDate && Number(inQty) > 0) {
+      current.logs.push({ id: newId(), type: 'in', date: normalizeDate(inDate), qty: Number(inQty) });
+    }
+    if (useDate && Number(useQty) > 0) {
+      current.logs.push({ id: newId(), type: 'out', date: normalizeDate(useDate), qty: Number(useQty) });
+    }
+  }
+  return items;
+};
+
+const normalizeSavedItems = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== 'object' || !candidate.name || !Array.isArray(candidate.logs)) return [];
+    const logs = candidate.logs.flatMap((log) => {
+      const qty = Number(log?.qty);
+      if (!['in', 'out'].includes(log?.type) || !Number.isInteger(qty) || qty < 1) return [];
+      return [{ id: log.id || newId(), type: log.type, date: normalizeDate(log.date || today()), qty }];
+    });
+    return [{
+      id: candidate.id || newId(),
+      name: String(candidate.name).trim(),
+      category: ITEM_CATEGORIES.includes(candidate.category) ? candidate.category : categoryFor(String(candidate.name)),
+      store: String(candidate.store || ''),
+      logs,
+    }];
+  });
+};
+
+const getStock = (item) =>
+  item.logs.reduce((total, log) => total + (log.type === 'in' ? log.qty : -log.qty), 0);
+
+const escapeCsv = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+export default function App() {
+  const [items, setItems] = useState(() => inventoryFromCsv(INITIAL_CSV));
+  const [ready, setReady] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('すべて');
+  const [showAdd, setShowAdd] = useState(false);
+  const [activity, setActivity] = useState(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  const [parsedReceipt, setParsedReceipt] = useState(null);
+  const csvInputRef = useRef(null);
+  const [addForm, setAddForm] = useState({ name: '', category: '絵具', store: '', qty: 1, date: today() });
+  const [activityForm, setActivityForm] = useState({ qty: 1, date: today() });
+
+  useEffect(() => {
+    let restoredItems = null;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('art_inventory_v3');
+      if (saved) {
+        const restored = normalizeSavedItems(JSON.parse(saved));
+        if (restored.length) restoredItems = restored;
+      }
+    } catch {
+      // 保存データが壊れている場合は、同梱した初期データを使います。
+    }
+    queueMicrotask(() => {
+      if (restoredItems) setItems(restoredItems);
+      setReady(true);
+    });
   }, []);
 
-  // Save to local storage
   useEffect(() => {
-    localStorage.setItem('art_inventory_v3', JSON.stringify(items));
-  }, [items]);
+    if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items, ready]);
 
-  // CSV Export Logic
-  const handleCSVExport = () => {
-    if (items.length === 0) return;
-
-    let csvContent = "\ufeff";
-    csvContent += "入庫日,品名,数量,使用日,数量,購入店,残り\n";
-
-    items.forEach(item => {
-      const logs = item.logs;
-      let currentStock = 0;
-
-      logs.forEach((log, idx) => {
-        if (log.type === 'in') currentStock += log.qty;
-        else currentStock -= log.qty;
-
-        const row = [
-          log.type === 'in' ? log.date : '',
-          idx === 0 ? `"${item.name}"` : '',
-          log.type === 'in' ? log.qty : '',
-          log.type === 'out' ? log.date : '',
-          log.type === 'out' ? log.qty : '',
-          idx === 0 ? `"${item.store}"` : '',
-          currentStock
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-      if(logs.length === 0) {
-         csvContent += `,"${item.name}",,,,${item.store ? `"${item.store}"` : ''},0\n`;
-      }
-      csvContent += ",,,,,,\n";
+  const visibleItems = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase('ja');
+    return items.filter((item) => {
+      const categoryMatches = activeCategory === 'すべて' || item.category === activeCategory;
+      const searchMatches = !search || `${item.name} ${item.store}`.toLocaleLowerCase('ja').includes(search);
+      return categoryMatches && searchMatches;
     });
+  }, [activeCategory, items, query]);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "画材リスト_更新済.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const totalStock = items.reduce((sum, item) => sum + getStock(item), 0);
+  const usedCount = items.reduce(
+    (sum, item) => sum + item.logs.filter((log) => log.type === 'out').reduce((subtotal, log) => subtotal + log.qty, 0),
+    0,
+  );
+  const activityItem = activity ? items.find((item) => item.id === activity.itemId) : null;
+
+  const openActivity = (itemId, type) => {
+    setActivityForm({ qty: 1, date: today() });
+    setActivity({ itemId, type });
   };
 
-  // CSV Parsing Logic
-  const handleCSVUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const addItem = (event) => {
+    event.preventDefault();
+    const name = addForm.name.trim();
+    const qty = Number(addForm.qty);
+    if (!name || !Number.isInteger(qty) || qty < 1) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target.result;
-      const lines = text.split(/\r?\n/);
-      const newItemsMap = new Map();
-      let currentItem = null;
-
-      let headerFound = false;
-
-      lines.forEach((line) => {
-        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        
-        if (cols.includes('品名') && (cols.includes('入庫日') || cols.includes('入庫'))) {
-          headerFound = true;
-          return;
-        }
-        if (!headerFound || cols.length < 2) return;
-
-        const [inDate, name, inQty, useDate, useQty, store] = cols;
-
-        const formatDate = (dateStr) => {
-          if (!dateStr) return '';
-          return dateStr.replace(/\./g, '/');
-        };
-
-        const trimmedName = name ? name.trim() : "";
-
-        if (trimmedName !== "") {
-          currentItem = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: trimmedName,
-            store: store || '',
-            logs: []
-          };
-          if (inQty && !isNaN(inQty) && inQty !== "") {
-            currentItem.logs.push({ type: 'in', date: formatDate(inDate), qty: Number(inQty), note: 'インポート' });
-          }
-          if (useDate && useQty && !isNaN(useQty) && useQty !== "") {
-            currentItem.logs.push({ type: 'out', date: formatDate(useDate), qty: Number(useQty), note: 'インポート' });
-          }
-          newItemsMap.set(trimmedName, currentItem);
-        } else if (currentItem) {
-          if (inQty && !isNaN(inQty) && inQty !== "") {
-            currentItem.logs.push({ type: 'in', date: formatDate(inDate), qty: Number(inQty), note: '追加読込' });
-          }
-          if (useDate && useQty && !isNaN(useQty) && useQty !== "") {
-            currentItem.logs.push({ type: 'out', date: formatDate(useDate), qty: Number(useQty), note: '追加読込' });
-          }
-        }
-      });
-
-      if (newItemsMap.size > 0) {
-        setItems(prev => {
-          const csvNames = Array.from(newItemsMap.keys());
-          const filteredItems = prev.filter(item => !csvNames.includes(item.name.trim()));
-          return [...filteredItems, ...Array.from(newItemsMap.values())];
-        });
+    setItems((current) => {
+      const existingIndex = current.findIndex((item) => item.name.toLocaleLowerCase('ja') === name.toLocaleLowerCase('ja'));
+      const log = { id: newId(), type: 'in', date: addForm.date, qty };
+      if (existingIndex < 0) {
+        return [...current, { id: newId(), name, category: addForm.category, store: addForm.store.trim(), logs: [log] }];
       }
+      return current.map((item, index) => index === existingIndex
+        ? { ...item, store: addForm.store.trim() || item.store, logs: [...item.logs, log] }
+        : item);
+    });
+    setAddForm({ name: '', category: '絵具', store: '', qty: 1, date: today() });
+    setShowAdd(false);
+  };
+
+  const recordActivity = (event) => {
+    event.preventDefault();
+    if (!activity || !activityItem) return;
+    const qty = Number(activityForm.qty);
+    if (!Number.isInteger(qty) || qty < 1) return;
+    if (activity.type === 'out' && qty > getStock(activityItem)) return;
+
+    setItems((current) => current.map((item) => item.id === activity.itemId
+      ? { ...item, logs: [...item.logs, { id: newId(), type: activity.type, date: activityForm.date, qty }] }
+      : item));
+    setActivity(null);
+  };
+
+  const importCsv = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imported = inventoryFromCsv(typeof reader.result === 'string' ? reader.result : '');
+      if (imported.length) setItems(imported);
     };
     reader.readAsText(file);
-    e.target.value = null;
   };
 
-  const handleClearAll = () => {
-    if (confirm('ブラウザに保存されているすべての画材データを削除しますか？\nCSVインポート前に一旦きれいにしたい場合に実行してください。')) {
-      setItems([]);
-      localStorage.removeItem('art_inventory_v3');
+  const exportCsv = () => {
+    const rows = ['入庫日,品名,数量,使用日,数量,購入店,残り'];
+    for (const item of items) {
+      let stock = 0;
+      item.logs.forEach((log, index) => {
+        stock += log.type === 'in' ? log.qty : -log.qty;
+        rows.push([
+          log.type === 'in' ? log.date.replaceAll('-', '/') : '',
+          index === 0 ? escapeCsv(item.name) : '',
+          log.type === 'in' ? log.qty : '',
+          log.type === 'out' ? log.date.replaceAll('-', '/') : '',
+          log.type === 'out' ? log.qty : '',
+          index === 0 ? escapeCsv(item.store) : '',
+          stock,
+        ].join(','));
+      });
+      rows.push(',,,,,,');
+    }
+    const blob = new Blob([`\uFEFF${rows.join('\n')}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '画材リスト_更新済.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const readReceipt = async (file) => {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setReceiptError('ファイルは4MB以内にしてください。');
+      return;
+    }
+    setReceiptLoading(true);
+    setReceiptError('');
+    try {
+      const fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result.split(',')[1] : '');
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const response = await fetch('/api/parse-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type,
+          fileData,
+          existingItems: items.map((item) => item.name),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.receipt) throw new Error(result.error || '読み取りに失敗しました。');
+      setParsedReceipt({ ...result.receipt, date: result.receipt.date || today() });
+    } catch (error) {
+      setReceiptError(error.message || '読み取りに失敗しました。');
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
-  const getItemStats = (item) => {
-    const remaining = item.logs.reduce((acc, log) => {
-      return log.type === 'in' ? acc + log.qty : acc - log.qty;
-    }, 0);
-    return { remaining };
-  };
-
-  // ---- Add / Edit Handlers ----
-
-  const handleAddItem = (e) => {
-    e.preventDefault();
-    const trimmedName = newItem.name.trim();
-    
-    const existingIndex = items.findIndex(i => i.name === trimmedName);
-    if (existingIndex !== -1) {
-      if (!confirm('同名の画材が既に存在します。新しい入庫記録として既存の項目に追加しますか？')) return;
-      
-      setItems(items.map(i => i.name === trimmedName ? {
-        ...i,
-        logs: [...i.logs, { type: 'in', date: newItem.date.replace(/-/g, '/'), qty: Number(newItem.qty), note: '手動追加' }]
-      } : i));
-    } else {
-      const item = {
-        id: Date.now().toString(),
-        name: trimmedName,
-        store: newItem.store,
-        logs: [{ type: 'in', date: newItem.date.replace(/-/g, '/'), qty: Number(newItem.qty), note: '新規登録' }]
-      };
-      setItems([...items, item]);
-    }
-    
-    setShowAddModal(false);
-    setNewItem({ name: '', store: '', date: new Date().toISOString().split('T')[0], qty: 1 });
-  };
-
-  const handleAddUsage = (e) => {
-    e.preventDefault();
-    setItems(items.map(i => i.id === showUsageModal ? {
-      ...i,
-      logs: [...i.logs, { type: 'out', date: usage.date.replace(/-/g, '/'), qty: Number(usage.qty), note: '使用記録' }]
-    } : i));
-    setShowUsageModal(null);
-  };
-
-  const handleEditItemSubmit = (e) => {
-    e.preventDefault();
-    setItems(items.map(i => i.id === editingItem.id ? { ...i, name: editingItem.name.trim(), store: editingItem.store } : i));
-    setEditingItem(null);
-  };
-
-  const handleEditLogSubmit = (e) => {
-    e.preventDefault();
-    setItems(items.map(i => {
-      if (i.id === editingLog.itemId) {
-        const newLogs = [...i.logs];
-        newLogs[editingLog.logIndex] = {
-          ...newLogs[editingLog.logIndex],
-          type: editingLog.type,
-          date: editingLog.date.replace(/-/g, '/'),
-          qty: Number(editingLog.qty)
-        };
-        return { ...i, logs: newLogs };
+  const importReceipt = () => {
+    if (!parsedReceipt?.items?.length) return;
+    setItems((current) => {
+      const next = [...current];
+      for (const entry of parsedReceipt.items) {
+        const name = String(entry.name || '').trim();
+        const qty = Number(entry.qty);
+        if (!name || !Number.isInteger(qty) || qty < 1) continue;
+        const index = next.findIndex((item) => item.name.toLocaleLowerCase('ja') === name.toLocaleLowerCase('ja'));
+        const log = { id: newId(), type: 'in', date: parsedReceipt.date || today(), qty };
+        if (index >= 0) {
+          next[index] = { ...next[index], store: parsedReceipt.store || next[index].store, logs: [...next[index].logs, log] };
+        } else {
+          next.push({ id: newId(), name, category: ITEM_CATEGORIES.includes(entry.category) ? entry.category : categoryFor(name), store: parsedReceipt.store || '', logs: [log] });
+        }
       }
-      return i;
-    }));
-    setEditingLog(null);
-  };
-
-  const handleDeleteLog = () => {
-    if (!confirm('この履歴を削除しますか？（在庫数が再計算されます）')) return;
-    setItems(items.map(i => {
-      if (i.id === editingLog.itemId) {
-        const newLogs = i.logs.filter((_, idx) => idx !== editingLog.logIndex);
-        return { ...i, logs: newLogs };
-      }
-      return i;
-    }));
-    setEditingLog(null);
+      return next;
+    });
+    setParsedReceipt(null);
+    setShowReceipt(false);
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 p-4 md:p-8 font-sans selection:bg-zinc-200 tracking-tight">
-      <header className="max-w-6xl mx-auto mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-200 pb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tighter text-zinc-950 flex items-center gap-2">
-            <Package className="text-zinc-400" strokeWidth={2} size={28} />
-            Art Supply Inventory
-          </h1>
-          <p className="text-zinc-500 mt-2 font-medium text-sm">画材という「物語の種」を、丹念に管理する</p>
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <input type="file" ref={fileInputRef} onChange={handleCSVUpload} accept=".csv" className="hidden" />
-          <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-md hover:bg-zinc-50 transition-colors text-xs font-bold uppercase tracking-widest text-zinc-600 shadow-sm">
-            <Upload size={14} />
-            CSV Import
-          </button>
-          <button onClick={handleCSVExport} className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-md hover:bg-zinc-50 transition-colors text-xs font-bold uppercase tracking-widest text-zinc-600 shadow-sm">
-            <Download size={14} />
-            CSV Export
-          </button>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-6 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-all text-xs font-bold uppercase tracking-widest shadow-md">
-            <Plus size={14} />
-            Add Item
-          </button>
+    <main className="min-h-screen bg-[#f5f3ed] text-[#242521]">
+      <header className="border-b border-[#dedbd2] bg-[#fbfaf5]">
+        <div className="mx-auto flex max-w-[1240px] flex-col gap-5 px-5 py-6 md:flex-row md:items-center md:justify-between md:px-8 md:py-8">
+          <div className="flex items-center gap-4">
+            <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[#315bd7] text-white shadow-lg shadow-blue-900/10">
+              <Palette size={20} />
+            </div>
+            <div>
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#76736b]">Atelier stock</p>
+              <h1 className="text-[22px] font-semibold tracking-[-0.04em]">画材庫</h1>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => importCsv(event.target.files?.[0])} />
+            <HeaderButton onClick={() => csvInputRef.current?.click()}><Upload size={16} />CSV読込</HeaderButton>
+            <HeaderButton onClick={exportCsv}><Download size={16} />CSV保存</HeaderButton>
+            <HeaderButton onClick={() => { setReceiptError(''); setParsedReceipt(null); setShowReceipt(true); }}><FileText size={16} />領収書から登録</HeaderButton>
+            <button onClick={() => setShowAdd(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[#315bd7] px-4 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-[#294fc0]">
+              <Plus size={17} />画材を登録
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto">
-        <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-zinc-100 text-[10px] font-black tracking-widest text-zinc-500 uppercase rounded-t-lg border-x border-t border-zinc-200">
-          <div className="col-span-4">Material / Store</div>
-          <div className="col-span-5 pl-4 border-l border-zinc-200">History (Full Log)</div>
-          <div className="col-span-1 text-center border-l border-zinc-200">Stock</div>
-          <div className="col-span-2 text-right border-l border-zinc-200">Actions</div>
+      <section className="mx-auto max-w-[1240px] px-5 py-7 md:px-8 md:py-10">
+        <div className="mb-7 grid gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="rounded-2xl border border-[#dedbd2] bg-[#fffdf8] p-5 shadow-sm md:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9edfb] text-[#315bd7]"><Sparkles size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold">表示数はすべて「未使用品」</p>
+                  <p className="mt-0.5 text-xs text-[#76736b]">使い始めた時点で、使用済みとして在庫から減らします。</p>
+                </div>
+              </div>
+              <div className="flex gap-7 border-t border-[#ebe8df] pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+                <Stat label="未使用" value={totalStock} />
+                <Stat label="使用記録" value={usedCount} />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex min-h-[82px] items-center gap-3 rounded-2xl border border-[#dedbd2] bg-[#fffdf8] px-5 shadow-sm focus-within:border-[#9aa9df]">
+            <Search size={18} className="text-[#88847d]" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="品名・購入店を検索" aria-label="品名または購入店で検索" className="h-11 w-full bg-transparent text-sm outline-none" />
+          </div>
         </div>
 
-        <div className="flex flex-col bg-white border-x border-zinc-200 rounded-b-lg overflow-hidden shadow-sm">
-          {items.length === 0 ? (
-            <div className="py-24 text-center text-zinc-400 bg-white border-b border-zinc-200">
-              <Package className="mx-auto mb-4 opacity-10" size={64} />
-              <p className="font-medium text-lg text-zinc-300">No materials recorded.</p>
-            </div>
-          ) : (
-            items.map((item, itemIdx) => {
-              const { remaining } = getItemStats(item);
-              return (
-                <div key={item.id} className={`grid grid-cols-1 md:grid-cols-12 gap-4 p-6 md:px-8 md:py-4 border-b border-zinc-100 transition-colors ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/20'}`}>
-                  
-                  {/* Column 1: Name & Store */}
-                  <div className="col-span-4 flex flex-col justify-center group/item">
-                    <div className="flex items-start justify-between pr-4">
-                      <div>
-                        <h3 className="font-bold text-lg text-zinc-900 leading-tight mb-1">{item.name}</h3>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-                          <ShoppingCart size={11} className="opacity-60" />
-                          <span>{item.store || '---'}</span>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => setEditingItem({ id: item.id, name: item.name, store: item.store })}
-                        className="opacity-0 group-hover/item:opacity-100 p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded transition-all"
-                        title="画材情報を編集"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    </div>
-                  </div>
+        <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-2">
+          <SlidersHorizontal size={16} className="mr-1 shrink-0 text-[#8b877f]" />
+          {CATEGORIES.map((category) => {
+            const count = category === 'すべて' ? items.length : items.filter((item) => item.category === category).length;
+            const selected = activeCategory === category;
+            return (
+              <button key={category} onClick={() => setActiveCategory(category)} className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-xs font-medium ${selected ? 'border-[#315bd7] bg-[#315bd7] text-white' : 'border-[#d9d6cd] bg-[#fffdf8] text-[#68655e]'}`}>
+                {category}<span className={selected ? 'text-white/65' : 'text-[#aaa69d]'}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
 
-                  {/* Column 2: History (Vertical List) */}
-                  <div className="col-span-5 md:pl-4 md:border-l border-zinc-100 py-1">
-                    <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
-                      {item.logs.length === 0 ? (
-                        <span className="text-xs text-zinc-300 italic">No history</span>
-                      ) : (
-                        item.logs.map((log, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={() => setEditingLog({ itemId: item.id, logIndex: idx, type: log.type, date: log.date.replace(/\//g, '-'), qty: log.qty })}
-                            className="flex items-center justify-between text-[11px] font-bold group/log tracking-tight p-1 -mx-1 rounded cursor-pointer hover:bg-zinc-100 transition-colors"
-                            title="クリックで履歴を編集"
-                          >
-                            <div className="flex items-center gap-3 pointer-events-none">
-                              <div className={`w-0.5 h-3 ${log.type === 'in' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
-                              <span className="text-zinc-400 tabular-nums w-20">{log.date}</span>
-                              <span className={`px-1.5 py-0.5 rounded-sm text-[9px] uppercase tracking-tighter font-black shadow-sm ${log.type === 'in' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
-                                {log.type === 'in' ? 'IN' : 'USE'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 pointer-events-none">
-                              <span className={`font-black tabular-nums ${log.type === 'in' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                {log.type === 'in' ? '+' : '−'}{log.qty}
-                              </span>
-                              <Pencil size={10} className="opacity-0 group-hover/log:opacity-100 text-zinc-400" />
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Column 3: Stock */}
-                  <div className="col-span-1 flex flex-col items-center justify-center md:border-l border-zinc-100">
-                    <span className="md:hidden text-[10px] font-black text-zinc-400 mb-1 uppercase tracking-widest">Stock</span>
-                    <div className={`text-2xl font-black leading-none tabular-nums px-3 py-1.5 rounded-md border ${
-                      remaining <= 0 
-                        ? 'text-blue-600 bg-blue-50 border-blue-200 shadow-sm' 
-                        : remaining <= 2 
-                          ? 'text-orange-600 bg-orange-50 border-orange-200 shadow-sm' 
-                          : 'text-zinc-900 border-transparent'
-                    }`}>
-                      {remaining}
-                    </div>
-                  </div>
-
-                  {/* Column 4: Actions */}
-                  <div className="col-span-2 flex justify-end gap-1 md:border-l border-zinc-100 md:pl-4">
-                    <button onClick={() => setShowUsageModal(item.id)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded transition-all" title="使用を記録"><Minus size={18} /></button>
-                    <button onClick={() => {
-                        const qty = prompt('追加数量を入力', '1');
-                        if (qty && !isNaN(qty)) {
-                          setItems(items.map(i => i.id === item.id ? { ...i, logs: [...i.logs, { type: 'in', date: new Date().toISOString().split('T')[0].replace(/-/g, '/'), qty: Number(qty), note: 'Manual' }] } : i));
-                        }
-                      }} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded transition-all" title="入庫を追加"><Plus size={18} /></button>
-                    <button onClick={() => {
-                        if(confirm(`「${item.name}」を完全に削除しますか？\n※この操作は取り消せません。`)) {
-                          setItems(items.filter(i => i.id !== item.id));
-                        }
-                      }} className="p-2 text-zinc-300 hover:text-red-600 transition-all" title="画材を削除"><Trash2 size={18} /></button>
-                  </div>
-
-                </div>
-              )
-            })
+        <div className="overflow-hidden rounded-2xl border border-[#dcd9d0] bg-[#fffdf8] shadow-sm">
+          <div className="hidden grid-cols-[minmax(240px,1.4fr)_minmax(220px,1fr)_100px_210px] gap-6 border-b border-[#e5e2d9] bg-[#f2f0e9] px-6 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b877f] lg:grid">
+            <span>画材</span><span>最近の履歴</span><span className="text-center">未使用</span><span className="text-right">記録</span>
+          </div>
+          {visibleItems.length ? visibleItems.map((item) => (
+            <InventoryRow key={item.id} item={item} onActivity={openActivity} />
+          )) : (
+            <div className="grid min-h-72 place-items-center px-6 text-center text-[#7d7971]">該当する画材がありません。</div>
           )}
         </div>
-      </main>
 
-      <footer className="max-w-6xl mx-auto mt-12 pb-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black tracking-widest text-zinc-400 uppercase">
-        <div className="flex gap-6">
-          <span>Art Archive v3.6 Editable</span>
-          <span>Items: {items.length}</span>
-          <span>Alert: {items.filter(i => getItemStats(i).remaining <= 2).length}</span>
-        </div>
-        <button onClick={handleClearAll} className="flex items-center gap-2 px-3 py-1 text-zinc-300 hover:text-red-400 border border-transparent hover:border-red-100 rounded transition-all">
-          <RefreshCw size={12} />全データ削除 (リセット)
-        </button>
-      </footer>
+        <footer className="mt-5 flex flex-col gap-2 px-1 text-xs text-[#8b877f] sm:flex-row sm:justify-between">
+          <span>{visibleItems.length}件を表示中</span>
+          <span className="flex items-center gap-1.5"><History size={14} />入庫と使用の履歴から未使用数を計算しています</span>
+        </footer>
+      </section>
 
-      {/* MODALS */}
-
-      {/* 1. Add Item Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-bold mb-6 text-zinc-900 tracking-tighter">Register New Item</h2>
-            <form onSubmit={handleAddItem} className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Item Name</label>
-                <input required type="text" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none transition-all" placeholder="例: 木製パネル F10" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Quantity</label>
-                  <input required type="number" min="1" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={newItem.qty} onChange={e => setNewItem({...newItem, qty: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Store</label>
-                  <input type="text" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" placeholder="例: 世界堂" value={newItem.store} onChange={e => setNewItem({...newItem, store: e.target.value})} />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Date</label>
-                <input type="date" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={newItem.date} onChange={e => setNewItem({...newItem, date: e.target.value})} />
-              </div>
-              <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 tracking-widest uppercase">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-zinc-900 text-white rounded-md shadow-lg hover:bg-zinc-800 transition-all font-bold text-xs tracking-widest uppercase">Register</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Usage Log Modal */}
-      {showUsageModal && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-bold mb-1 text-zinc-900 tracking-tighter">Record Usage</h2>
-            <p className="text-xs text-zinc-400 mb-8 font-medium">{items.find(i => i.id === showUsageModal)?.name}</p>
-            <form onSubmit={handleAddUsage} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Amount</label>
-                  <input required type="number" min="1" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={usage.qty} onChange={e => setUsage({...usage, qty: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Date</label>
-                  <input type="date" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={usage.date} onChange={e => setUsage({...usage, date: e.target.value})} />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => setShowUsageModal(null)} className="flex-1 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 tracking-widest uppercase">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-zinc-900 text-white rounded-md shadow-lg hover:bg-zinc-800 transition-all font-bold text-xs tracking-widest uppercase">Record</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Edit Item Modal */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-bold mb-6 text-zinc-900 tracking-tighter">Edit Item Info</h2>
-            <form onSubmit={handleEditItemSubmit} className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Item Name</label>
-                <input required type="text" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none transition-all" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Store</label>
-                <input type="text" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={editingItem.store} onChange={e => setEditingItem({...editingItem, store: e.target.value})} />
-              </div>
-              <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => setEditingItem(null)} className="flex-1 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 tracking-widest uppercase">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-zinc-900 text-white rounded-md shadow-lg hover:bg-zinc-800 transition-all font-bold text-xs tracking-widest uppercase">Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Edit Log Modal */}
-      {editingLog && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-xl font-bold text-zinc-900 tracking-tighter">Edit History Log</h2>
-              <button type="button" onClick={() => setEditingLog(null)} className="text-zinc-400 hover:text-zinc-600"><X size={20} /></button>
+      {showAdd && (
+        <Modal title="新しい画材を登録" description="登録した数量が未使用在庫に追加されます。" onClose={() => setShowAdd(false)}>
+          <form onSubmit={addItem} className="space-y-5">
+            <Field label="品名"><input required value={addForm.name} onChange={(event) => setAddForm({ ...addForm, name: event.target.value })} className="input" /></Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="ジャンル"><select value={addForm.category} onChange={(event) => setAddForm({ ...addForm, category: event.target.value })} className="input">{ITEM_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+              <Field label="数量"><input required type="number" min="1" value={addForm.qty} onChange={(event) => setAddForm({ ...addForm, qty: event.target.value })} className="input" /></Field>
             </div>
-            <form onSubmit={handleEditLogSubmit} className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Type</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                    <input type="radio" name="logType" value="in" checked={editingLog.type === 'in'} onChange={() => setEditingLog({...editingLog, type: 'in'})} className="accent-zinc-900" />
-                    IN (入庫)
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                    <input type="radio" name="logType" value="out" checked={editingLog.type === 'out'} onChange={() => setEditingLog({...editingLog, type: 'out'})} className="accent-zinc-900" />
-                    USE (使用)
-                  </label>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Amount</label>
-                  <input required type="number" min="1" className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={editingLog.qty} onChange={e => setEditingLog({...editingLog, qty: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1.5">Date</label>
-                  <input type="date" required className="w-full bg-zinc-50 border border-zinc-200 px-3 py-2 rounded-md focus:ring-2 focus:ring-zinc-900 focus:outline-none" value={editingLog.date} onChange={e => setEditingLog({...editingLog, date: e.target.value})} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 mt-8">
-                <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-md shadow hover:bg-zinc-800 transition-all font-bold text-xs tracking-widest uppercase">Save Changes</button>
-                <button type="button" onClick={handleDeleteLog} className="w-full py-2.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all font-bold text-xs tracking-widest uppercase flex items-center justify-center gap-2">
-                  <Trash2 size={14} /> Delete this log
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <Field label="購入店"><input value={addForm.store} onChange={(event) => setAddForm({ ...addForm, store: event.target.value })} className="input" /></Field>
+            <Field label="入庫日"><input required type="date" value={addForm.date} onChange={(event) => setAddForm({ ...addForm, date: event.target.value })} className="input" /></Field>
+            <ModalActions onCancel={() => setShowAdd(false)} submitLabel="登録する" />
+          </form>
+        </Modal>
       )}
 
-    </div>
-  );
-};
+      {activity && activityItem && (
+        <Modal title={activity.type === 'in' ? '未使用品を入庫' : '使用済みにする'} description={activityItem.name} onClose={() => setActivity(null)}>
+          <form onSubmit={recordActivity} className="space-y-5">
+            {activity.type === 'out' && <div className="flex justify-between rounded-xl bg-[#f1efe9] px-4 py-3 text-sm"><span>現在の未使用在庫</span><strong>{getStock(activityItem)}点</strong></div>}
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="数量"><input required type="number" min="1" max={activity.type === 'out' ? getStock(activityItem) : undefined} value={activityForm.qty} onChange={(event) => setActivityForm({ ...activityForm, qty: event.target.value })} className="input" /></Field>
+              <Field label={activity.type === 'in' ? '入庫日' : '使用日'}><input required type="date" value={activityForm.date} onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })} className="input" /></Field>
+            </div>
+            {activity.type === 'out' && <p className="text-xs leading-5 text-[#77736c]">製品を使い始めた時点で登録します。使用後の残量や状態は管理しません。</p>}
+            <ModalActions onCancel={() => setActivity(null)} submitLabel="記録する" />
+          </form>
+        </Modal>
+      )}
 
-export default App;
+      {showReceipt && (
+        <Modal title="領収書・納品書から登録" description="PDFや写真を読み取り、確認後に未使用在庫へ追加します。" onClose={() => setShowReceipt(false)} wide>
+          <div className="space-y-5">
+            {!parsedReceipt && (
+              <label className="grid min-h-40 cursor-pointer place-items-center rounded-2xl border border-dashed border-[#bfc5d7] bg-[#f7f8fc] p-6 text-center">
+                <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" className="hidden" disabled={receiptLoading} onChange={(event) => readReceipt(event.target.files?.[0])} />
+                <span>{receiptLoading ? <LoaderCircle className="mx-auto mb-3 animate-spin text-[#315bd7]" /> : <Upload className="mx-auto mb-3 text-[#315bd7]" />}<strong className="block text-sm">{receiptLoading ? '読み取り中…' : 'PDFまたは画像を選択'}</strong><span className="mt-1 block text-xs text-[#77736c]">4MBまで</span></span>
+              </label>
+            )}
+            {receiptError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{receiptError}</div>}
+            {parsedReceipt && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4"><Field label="購入店"><input value={parsedReceipt.store} onChange={(event) => setParsedReceipt({ ...parsedReceipt, store: event.target.value })} className="input" /></Field><Field label="入庫日"><input type="date" value={parsedReceipt.date} onChange={(event) => setParsedReceipt({ ...parsedReceipt, date: event.target.value })} className="input" /></Field></div>
+                {parsedReceipt.items.map((entry, index) => <div key={`${entry.name}-${index}`} className="flex items-center justify-between gap-4 rounded-xl border border-[#e3e0d8] bg-white p-4"><span className="min-w-0 flex-1 text-sm font-semibold">{entry.name}</span><span className="text-xs text-[#77736c]">{entry.category}</span><strong>{entry.qty}点</strong></div>)}
+                <p className="text-xs leading-5 text-[#77736c]">読み取りのため書類をOpenAI APIへ送信します。品名と数量を確認してから登録してください。</p>
+                <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button onClick={() => setShowReceipt(false)} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button onClick={importReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{parsedReceipt.items.length}件を登録<ChevronRight size={16} /></button></div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      <style>{`
+        .input { height: 44px; width: 100%; border: 1px solid #d8d5cc; border-radius: 12px; background: white; padding: 0 12px; font-size: 14px; outline: none; }
+        .input:focus { border-color: #7288d8; box-shadow: 0 0 0 3px rgba(49,91,215,.12); }
+      `}</style>
+    </main>
+  );
+}
+
+function HeaderButton({ children, onClick }) {
+  return <button onClick={onClick} className="flex h-11 items-center gap-2 rounded-xl border border-[#d8d5cc] bg-[#fffdf8] px-3 text-xs font-semibold text-[#55534e] hover:bg-white">{children}</button>;
+}
+
+function InventoryRow({ item, onActivity }) {
+  const stock = getStock(item);
+  const recentLogs = [...item.logs].reverse().slice(0, 2);
+  const style = CATEGORY_STYLES[item.category] || CATEGORY_STYLES.その他;
+  return (
+    <article className="grid gap-5 border-b border-[#e9e6de] px-5 py-5 last:border-b-0 lg:grid-cols-[minmax(240px,1.4fr)_minmax(220px,1fr)_100px_210px] lg:items-center lg:gap-6 lg:px-6">
+      <div className="min-w-0"><div className="mb-2 flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${style.dot}`} /><span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${style.badge}`}>{item.category}</span></div><h2 className="truncate text-[15px] font-semibold">{item.name}</h2><p className="mt-1 truncate text-xs text-[#807c74]">{item.store || '購入店未登録'}</p></div>
+      <div className="space-y-1.5">{recentLogs.map((log) => <div key={log.id} className="flex items-center gap-3 text-xs"><span className="w-[78px] text-[#8a867e]">{log.date.replaceAll('-', '.')}</span><span className={`w-12 rounded-md px-1.5 py-0.5 text-center text-[9px] font-bold ${log.type === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-600'}`}>{log.type === 'in' ? '入庫' : '使用'}</span><strong>{log.type === 'in' ? '+' : '−'}{log.qty}</strong></div>)}</div>
+      <div className="flex items-baseline justify-between border-y border-[#ece9e1] py-3 lg:block lg:border-0 lg:py-0 lg:text-center"><span className="text-[10px] font-bold text-[#8d8981] lg:hidden">未使用在庫</span><div><strong className="text-3xl font-semibold">{stock}</strong><span className="ml-1 text-xs text-[#827f77]">点</span></div></div>
+      <div className="flex justify-end gap-2"><button onClick={() => onActivity(item.id, 'in')} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl border border-[#d8d5cc] px-3 text-xs font-semibold lg:flex-none"><PackagePlus size={15} />入庫</button><button disabled={stock === 0} onClick={() => onActivity(item.id, 'out')} className="flex h-9 flex-[1.5] items-center justify-center gap-2 rounded-xl bg-[#ecebe6] px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 lg:flex-none"><Check size={15} />使用済みにする</button></div>
+    </article>
+  );
+}
+
+function Modal({ title, description, children, onClose, wide = false }) {
+  return <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"><button type="button" aria-label="閉じる" onClick={onClose} className="absolute inset-0 bg-[#20211f]/40 backdrop-blur-sm" /><div className={`relative my-6 w-full ${wide ? 'max-w-[620px]' : 'max-w-[480px]'} overflow-hidden rounded-2xl border border-[#dedbd2] bg-[#fffdf8] shadow-2xl`}><div className="flex items-start justify-between border-b border-[#e7e4dc] px-6 py-5"><div><h2 className="text-lg font-semibold">{title}</h2><p className="mt-1 text-sm text-[#77736c]">{description}</p></div><button onClick={onClose} aria-label="閉じる" className="rounded-lg p-1 text-[#77736c] hover:bg-[#efede7]"><X size={18} /></button></div><div className="px-6 py-6">{children}</div></div></div>;
+}
+
+function Field({ label, children }) {
+  return <label className="block space-y-2"><span className="text-[11px] font-semibold tracking-[0.08em] text-[#66635d]">{label}</span>{children}</label>;
+}
+
+function ModalActions({ onCancel, submitLabel }) {
+  return <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button type="button" onClick={onCancel} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button type="submit" className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{submitLabel}<ChevronRight size={16} /></button></div>;
+}
+
+function Stat({ label, value }) {
+  return <div><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a867e]">{label}</span><strong className="mt-1 block text-xl font-semibold">{value}</strong></div>;
+}
