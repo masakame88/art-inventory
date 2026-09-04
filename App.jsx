@@ -1,17 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Check,
-  ChevronRight,
   Download,
-  FileText,
-  History,
-  LoaderCircle,
-  PackagePlus,
-  Palette,
+  Minus,
+  Package,
   Plus,
-  Search,
-  SlidersHorizontal,
-  Sparkles,
+  RefreshCw,
   Upload,
   X,
 } from 'lucide-react';
@@ -347,7 +340,7 @@ export default function App() {
         <div className="mx-auto flex max-w-[1240px] flex-col gap-5 px-5 py-6 md:flex-row md:items-center md:justify-between md:px-8 md:py-8">
           <div className="flex items-center gap-4">
             <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[#315bd7] text-white shadow-lg shadow-blue-900/10">
-              <Palette size={20} />
+              <Package size={20} />
             </div>
             <div>
               <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#76736b]">Atelier stock</p>
@@ -359,7 +352,7 @@ export default function App() {
             <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => importCsv(event.target.files?.[0])} />
             <HeaderButton onClick={() => csvInputRef.current?.click()}><Upload size={16} />CSV読込</HeaderButton>
             <HeaderButton onClick={exportCsv}><Download size={16} />CSV保存</HeaderButton>
-            <HeaderButton onClick={() => { setReceiptError(''); setParsedReceipt(null); setShowReceipt(true); }}><FileText size={16} />領収書から登録</HeaderButton>
+            <HeaderButton onClick={() => { setReceiptError(''); setParsedReceipt(null); setShowReceipt(true); }}><Package size={16} />領収書から登録</HeaderButton>
             <button onClick={() => setShowAdd(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[#315bd7] px-4 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-[#294fc0]">
               <Plus size={17} />画材を登録
             </button>
@@ -372,7 +365,7 @@ export default function App() {
           <div className="rounded-2xl border border-[#dedbd2] bg-[#fffdf8] p-5 shadow-sm md:p-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9edfb] text-[#315bd7]"><Sparkles size={16} /></div>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9edfb] text-[#315bd7]"><Package size={16} /></div>
                 <div>
                   <p className="text-sm font-semibold">表示数はすべて「未使用品」</p>
                   <p className="mt-0.5 text-xs text-[#76736b]">使い始めた時点で、使用済みとして在庫から減らします。</p>
@@ -386,13 +379,13 @@ export default function App() {
           </div>
 
           <div className="flex min-h-[82px] items-center gap-3 rounded-2xl border border-[#dedbd2] bg-[#fffdf8] px-5 shadow-sm focus-within:border-[#9aa9df]">
-            <Search size={18} className="text-[#88847d]" />
+            <span className="text-lg text-[#88847d]" aria-hidden="true">⌕</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="品名・購入店を検索" aria-label="品名または購入店で検索" className="h-11 w-full bg-transparent text-sm outline-none" />
           </div>
         </div>
 
         <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-2">
-          <SlidersHorizontal size={16} className="mr-1 shrink-0 text-[#8b877f]" />
+          <span className="mr-1 shrink-0 text-[10px] font-bold tracking-widest text-[#8b877f]">分類</span>
           {CATEGORIES.map((category) => {
             const count = category === 'すべて' ? items.length : items.filter((item) => item.category === category).length;
             const selected = activeCategory === category;
@@ -417,7 +410,7 @@ export default function App() {
 
         <footer className="mt-5 flex flex-col gap-2 px-1 text-xs text-[#8b877f] sm:flex-row sm:justify-between">
           <span>{visibleItems.length}件を表示中</span>
-          <span className="flex items-center gap-1.5"><History size={14} />入庫と使用の履歴から未使用数を計算しています</span>
+          <span className="flex items-center gap-1.5"><RefreshCw size={14} />入庫と使用の履歴から未使用数を計算しています</span>
         </footer>
       </section>
 
@@ -456,7 +449,7 @@ export default function App() {
             {!parsedReceipt && (
               <label className="grid min-h-40 cursor-pointer place-items-center rounded-2xl border border-dashed border-[#bfc5d7] bg-[#f7f8fc] p-6 text-center">
                 <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" className="hidden" disabled={receiptLoading} onChange={(event) => readReceipt(event.target.files?.[0])} />
-                <span>{receiptLoading ? <LoaderCircle className="mx-auto mb-3 animate-spin text-[#315bd7]" /> : <Upload className="mx-auto mb-3 text-[#315bd7]" />}<strong className="block text-sm">{receiptLoading ? '読み取り中…' : 'PDFまたは画像を選択'}</strong><span className="mt-1 block text-xs text-[#77736c]">4MBまで</span></span>
+                <span>{receiptLoading ? <RefreshCw className="mx-auto mb-3 animate-spin text-[#315bd7]" /> : <Upload className="mx-auto mb-3 text-[#315bd7]" />}<strong className="block text-sm">{receiptLoading ? '読み取り中…' : 'PDFまたは画像を選択'}</strong><span className="mt-1 block text-xs text-[#77736c]">4MBまで</span></span>
               </label>
             )}
             {receiptError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{receiptError}</div>}
@@ -465,7 +458,7 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-4"><Field label="購入店"><input value={parsedReceipt.store} onChange={(event) => setParsedReceipt({ ...parsedReceipt, store: event.target.value })} className="input" /></Field><Field label="入庫日"><input type="date" value={parsedReceipt.date} onChange={(event) => setParsedReceipt({ ...parsedReceipt, date: event.target.value })} className="input" /></Field></div>
                 {parsedReceipt.items.map((entry, index) => <div key={`${entry.name}-${index}`} className="flex items-center justify-between gap-4 rounded-xl border border-[#e3e0d8] bg-white p-4"><span className="min-w-0 flex-1 text-sm font-semibold">{entry.name}</span><span className="text-xs text-[#77736c]">{entry.category}</span><strong>{entry.qty}点</strong></div>)}
                 <p className="text-xs leading-5 text-[#77736c]">読み取りのため書類をOpenAI APIへ送信します。品名と数量を確認してから登録してください。</p>
-                <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button onClick={() => setShowReceipt(false)} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button onClick={importReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{parsedReceipt.items.length}件を登録<ChevronRight size={16} /></button></div>
+                <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button onClick={() => setShowReceipt(false)} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button onClick={importReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{parsedReceipt.items.length}件を登録<Plus size={16} /></button></div>
               </div>
             )}
           </div>
@@ -493,7 +486,7 @@ function InventoryRow({ item, onActivity }) {
       <div className="min-w-0"><div className="mb-2 flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${style.dot}`} /><span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${style.badge}`}>{item.category}</span></div><h2 className="truncate text-[15px] font-semibold">{item.name}</h2><p className="mt-1 truncate text-xs text-[#807c74]">{item.store || '購入店未登録'}</p></div>
       <div className="space-y-1.5">{recentLogs.map((log) => <div key={log.id} className="flex items-center gap-3 text-xs"><span className="w-[78px] text-[#8a867e]">{log.date.replaceAll('-', '.')}</span><span className={`w-12 rounded-md px-1.5 py-0.5 text-center text-[9px] font-bold ${log.type === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-600'}`}>{log.type === 'in' ? '入庫' : '使用'}</span><strong>{log.type === 'in' ? '+' : '−'}{log.qty}</strong></div>)}</div>
       <div className="flex items-baseline justify-between border-y border-[#ece9e1] py-3 lg:block lg:border-0 lg:py-0 lg:text-center"><span className="text-[10px] font-bold text-[#8d8981] lg:hidden">未使用在庫</span><div><strong className="text-3xl font-semibold">{stock}</strong><span className="ml-1 text-xs text-[#827f77]">点</span></div></div>
-      <div className="flex justify-end gap-2"><button onClick={() => onActivity(item.id, 'in')} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl border border-[#d8d5cc] px-3 text-xs font-semibold lg:flex-none"><PackagePlus size={15} />入庫</button><button disabled={stock === 0} onClick={() => onActivity(item.id, 'out')} className="flex h-9 flex-[1.5] items-center justify-center gap-2 rounded-xl bg-[#ecebe6] px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 lg:flex-none"><Check size={15} />使用済みにする</button></div>
+      <div className="flex justify-end gap-2"><button onClick={() => onActivity(item.id, 'in')} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl border border-[#d8d5cc] px-3 text-xs font-semibold lg:flex-none"><Plus size={15} />入庫</button><button disabled={stock === 0} onClick={() => onActivity(item.id, 'out')} className="flex h-9 flex-[1.5] items-center justify-center gap-2 rounded-xl bg-[#ecebe6] px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 lg:flex-none"><Minus size={15} />使用済みにする</button></div>
     </article>
   );
 }
@@ -507,9 +500,8 @@ function Field({ label, children }) {
 }
 
 function ModalActions({ onCancel, submitLabel }) {
-  return <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button type="button" onClick={onCancel} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button type="submit" className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{submitLabel}<ChevronRight size={16} /></button></div>;
+  return <div className="flex justify-end gap-2 border-t border-[#e7e4dc] pt-4"><button type="button" onClick={onCancel} className="h-10 rounded-xl px-4 text-sm">キャンセル</button><button type="submit" className="flex h-10 items-center gap-2 rounded-xl bg-[#315bd7] px-5 text-sm font-semibold text-white">{submitLabel}<Plus size={16} /></button></div>;
 }
 
 function Stat({ label, value }) {
   return <div><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a867e]">{label}</span><strong className="mt-1 block text-xl font-semibold">{value}</strong></div>;
-}
